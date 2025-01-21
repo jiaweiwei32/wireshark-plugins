@@ -9,7 +9,7 @@ local tcp_ports = {8084,8284}
 local tcp_proto = Proto("Dubbo2", "Apache Dubbo Protocol")
 
 -- 定义协议字段
-local fMagic = ProtoField.uint16("dubbo.magic", "Magic", base.HEX)
+local fMagic = ProtoField.string("dubbo.magic", "Magic", base.UNICODE)
 local Length = ProtoField.uint32("dubbo.length", "TCP Length", base.DEC)
 local fDubboLength = ProtoField.uint32("dubbo.dubboLength", "DubboLength", base.DEC)
 local ReqFlag = ProtoField.string("dubbo.isRequest", "IsRequest", base.UNICODE)
@@ -49,10 +49,10 @@ function tcp_proto.dissector(buffer, pinfo, tree)
 
         local magic_offset = 0
         local magic_length = 2
-        local magic = buffer(magic_offset, magic_length)
+        local magic_bytes = buffer(magic_offset, magic_length)
         -- local magic = base.bytes_to_string(magic_byte)
-        -- local magic_value = magic_bytes:uint()
-        -- local magic = string.format("0x%04x", magic_value)
+        local magic_value = magic_bytes:uint()
+        local magic = string.format("0x%04x", magic_value)
         -- 显示魔术字节
         subtree:add(fMagic, magic) 
 
@@ -153,16 +153,17 @@ function tcp_proto.dissector(buffer, pinfo, tree)
             local MethodParamTypes_Length = base.hex_to_decimal(MethodParamTypes_len_hex)
             offset = offset + 1
             local MethodParamTypes_byte = buffer(offset,MethodParamTypes_Length)
-            local MethodParamTypes = MethodParamTypes_byte:string()
-            subtree:add(fMethodParamTypes, MethodParamTypes)                  
+            local MethodParamTypes_before = MethodParamTypes_byte:string()
+            local MethodParamTypes = string.gsub(MethodParamTypes_before,"/",".")
+            subtree:add(fMethodParamTypes, MethodParamTypes)             
 
             print("【DEBUG信息】\n当前时间:" .. base.get_Date() .. "\nMagic:".. magic .. "\nTCP Length:" .. 
                 length .. " byte" .. "\nDubboLength:" .. DubboLength .. "\nIsRequest:" .. IsRequest .. 
                 "\nIsTwoWay:" .. IsTwoWay .. "\nIsEvent:" .. IsEvent .. "\nSerializationID:" .. result.serialization_id .. 
                 "\nRequestID:" .. RequestID .. " byte" .. "\ndubboVersion" .. dubboVersion .. "\nServiceName:" .. 
                 ServiceName .. "\nServiceVersion: " .. ServiceVersion .. "\nMethodName:" .. MethodName .. 
-                "\nMethodParamTypes:" ..  MethodParamTypes,"数据类型:",type(MethodParamTypes))
-            print("\nMagic:" .. magic .. "\t 数据类型:" .. type(magic))
+                "\nMethodParamTypes:" ..  MethodParamTypes)
+            print("\nMagic:" .. MethodParamTypes .. "\t 数据类型:" .. type(MethodParamTypes))
         else
             offset = 3 
             status_length = 1 
